@@ -1,10 +1,8 @@
 from os import system, name
-from PysigOptions import core as c
+from PysigOptions import core as c, render as rend
 import random
 
-mono = None
-
-__version = '1.0 release'
+__version = 'demo 1123'
 
 def StartConsoleDialogue():
     greetings = [
@@ -36,6 +34,8 @@ def __parsecommand(comm:str) -> None:
             __robjlist(args)
         case 'follow':
             __follow(args)
+        case 'map':
+            __map(args)
         case _:
             print(f"Команда {name} не найдена!")
 
@@ -79,12 +79,12 @@ def __carlist(args):
     objs = c.scene.GetActive(True)
     cars = [gameObject for gameObject in objs if gameObject.transform.HasComponent(c.mono.Car)]
     if not showtype:
-        cars = [gm for gm in cars if gm.transform.GetComponent(c.mono.Car).carType.name ==args[0]]
+        cars = [gm for gm in cars if gm.transform.GetComponent(c.mono.Car).get_cartype().name ==args[0]]
         if c.mono.CarTypes(args[0]) in [c.mono.CarTypes.Bus, c.mono.CarTypes.Trolleybus, c.mono.CarTypes.Tram]:
-            cars.sort(key=lambda car: car.transform.GetComponent(c.mono.Bus).route)
+            cars.sort(key=lambda car: car.transform.GetComponent(c.mono.Bus).get_route())
             cars.reverse()
         else:
-            cars.sort(key=lambda car: car.transform.GetComponent(c.mono.CarObjectLogic).uniqId)
+            cars.sort(key=lambda car: car.transform.GetComponent(c.mono.CarObjectLogic).get_uniqid())
     else:
         cars.sort(key=lambda car: car.transform.GetComponent(c.mono.Car).get_cartype().value)
     for gameObject in cars:
@@ -137,3 +137,26 @@ def __follow(args):
             target = random.choice(cars)
     c.mainCamera.followAt = target
     print("Чтобы выйти нажмите '~'")
+def __map(args):
+    if len(args) == 0:
+        # print maps
+        return
+    match args[0]:
+        case 'low':
+            for map in c.maps:
+                rend.lowmaps = True
+                rend.mapsize = float(args[1])
+                map.transform.SetScale(rend.mapsize, rend.mapsize)
+                map.transform.GetComponent(c.mono.SpriteRenderer).image = c.ext.Sprite(
+                    "Graphics/map/low/" + map.name + '.png')
+        case 'high':
+            for map in c.maps:
+                rend.lowmaps = False
+                rend.mapsize = float(args[1])
+                map.transform.SetScale(rend.mapsize, rend.mapsize)
+                map.transform.GetComponent(c.mono.SpriteRenderer).image = c.ext.Sprite(
+                    "Graphics/map/" + map.name + '.png')
+        case 'switch':
+            for map in c.maps:
+                sr = map.transform.GetComponent(c.mono.SpriteRenderer)
+                sr.enabled = not sr.enabled

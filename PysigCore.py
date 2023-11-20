@@ -10,6 +10,7 @@ import PysigOptions as var
 c = var.core
 c.mono = mono
 c.ext = ext
+rend = var.render
 class Input():
     cursorPosition = ext.Vector(0, 0)
     cursorWorldPosition = ext.Vector(0, 0)
@@ -100,7 +101,7 @@ class GameObject():
             childs = self.transform.GetChilds(True)
         for c in childs:
              c.selfActive = c.transform.parent.selfActive
-def rpcollection(rps):
+def rpcollection(rps, carstuck = False):
     gm = GameObject(f'RpCollection #{random.randint(0, 10**6)}', 'def')
     c.scene.AddObject(gm)
     cll = []
@@ -109,6 +110,7 @@ def rpcollection(rps):
         i.set_way(cll)
         gm.transform.AddChild(i.gameObject)
         i.transform.SetScale(.66, .66)
+        i._RoadPoint__carscanstuck = carstuck
     return (cll, gm.transform.GetChilds())
 def rp(id: str, name: str, dist: int, objs: [], pos):
     point = GameObject("name", 'def')
@@ -171,12 +173,14 @@ def bus(way, route: str, maxp, _car=None):
     bus = obj.AddComponent(mono.Bus(_car, mono.Car.Driver(), w0, way, w1, route, maxp))
     obj.name += ' ' + str(bus.get_uniqid())
     return obj
-def map(name, path, pos, size=ext.Vector(.2, .2)):
+def map(name, path, pos, size=ext.Vector(.2, .2), forceblit = False):
     gm = GameObject(name, 'def')
     gm.transform.SetScale(size.x, size.y)
-    rend = mono.SpriteRenderer(ext.Sprite(path), pos, -10, [255, 255, 255, 100])
+    rend = mono.SpriteRenderer(ext.Sprite(path), ext.Vector.Zero(), -100, [255, 255, 255, 100])
+    rend.forceblit = forceblit
     gm.AddComponent(rend)
-    #gm.transform.SetPos(pos.x, pos.y)
+    gm.transform.SetPos(pos.x, pos.y)
+    c.maps.append(gm)
     return gm
 # MAIN
 pygame.init()
@@ -203,56 +207,77 @@ c.cars = {mono.CarTypes.Passenger:
                             car("Moscow", 60)
                         ])}
 
-pygame.display.set_caption("Barnaul Street's Simulator")
+pygame.display.set_caption("Barnaul Streets Simulator")
 pygame.display.set_icon(ext.Sprite('Graphics/stop.png').load)
 
 camera = GameObject("Camera", "def")
 c.mainCamera = camera.AddComponent(mono.Camera((1280, 720), 60, 1))
 camera.AddComponent(mono.PlayerController())
 cam = camera.transform.GetComponent(mono.Camera)
-camera.transform.SetPos(5770, 477)#-cam.screenSize.x/2, -cam.screenSize.y/2)
+camera.transform.SetPos(4933, 410)#-cam.screenSize.x/2, -cam.screenSize.y/2)
 camera.transform.position -= ext.Vector(-30, -30) # откуда этот offset я без понятия
 
 c.lightsControllers.append(lc(13.0, 60.0, False))  # 0
 c.lightsControllers.append(lc(60.0, 60.0, True))  # 1
 c.lightsControllers.append(lc(60.0, 60.0, False))  # 2
 
-mapsize = 1
+rend.lowmaps = True
+rend.mapsize = 2
 for i in [1, 7, 13]:
     ypos = [1, 7, 13].index(i)
     for j in range(0, 6):
-        vec = ext.Vector(1472 * (j-1)*mapsize, 1472 * (ypos-1)*mapsize)
+        vec = ext.Vector(1475 * (j-1)*1, 1475 * (ypos-1)*1)
+        extra = 'low/' if rend.lowmaps else ''
         line = str((i+j)-1).zfill(2)
-        scene.AddObject(map(str(i+j), 'Graphics/map/' + line + '.png', vec, ext.Vector(mapsize, mapsize)))
-        print(line, i)
-scene.AddObject(map('end', 'Graphics/map/end.png', ext.Vector(8847, 0), ext.Vector(mapsize, mapsize)))
+        scene.AddObject(map(line, 'Graphics/map/' + extra + line + '.png', vec, ext.Vector(rend.mapsize, rend.mapsize)))
+scene.AddObject(map('end', f'Graphics/map/{"low/" if rend.lowmaps else ""}end.png', ext.Vector(1475 * 5, -1475), ext.Vector(rend.mapsize, rend.mapsize), True))
 
-offset = ext.Vector(5940, 977)
-at = rpcollection([rp('10000', 'start', 240, [trl('light', 245, 0), bs('Улица Антона Петрова', 225)], ext.Vector(407+offset.x, 274+offset.y)),
-                   rp('10001', 'other', 640, [], ext.Vector(638+offset.x, 383+offset.y)),
-                   rp('10002', 'end', 1, [], ext.Vector(1270+offset.x, 677+offset.y))
-                   ])[0]
-atrev = reversed(rpcollection([rp('00000', 'start', 240, [trl('light', 245, 0, False), bs('Улица Антона Петрова', 225, False)], ext.Vector(407-7+offset.x, 274+12+offset.y)),
-                   rp('00001', 'other', 640, [], ext.Vector(638-7+offset.x, 383+12+offset.y)),
-                   rp('00002', 'end', 1, [], ext.Vector(1270-7+offset.x, 677+12+offset.y))
-                   ])[0])
-
+at1 = rpcollection([rp('10000', 'start', 240,
+                       [trl('light', 240, 0, False), bs('Улица Антона Петрова', 205)],
+                       ext.Vector(6416, 1242)),
+                   rp('10001', 'other', 640, [], ext.Vector(6707, 1378)),
+                   rp('10002', 'end', 1, [], ext.Vector(7521, 1757))
+                   ], True)[0]
+at0 = rpcollection([
+rp('00000', 'start', 640, [], ext.Vector(7524, 1748)),
+                   rp('00001', 'other', 230,
+                      [trl('light', 1, 0), bs('Улица Антона Петрова', 30)],
+                      ext.Vector(6714, 1368)),
+    rp('00002', 'end', 82, [],
+       ext.Vector(6420, 1229))
+], True)[0]
 asz0 = rpcollection([
-rp('00100', 'start', 150, [bs('Северо-Западная улица', 2), trl('lineleft', 108, 1), trl('lineright', 141, 1), trl('up', 122, 2)], ext.Vector(-431+offset.x, -122+offset.y)),
-rp('00101', 'alights', 475, [bs('Телефонная улица', 474)], ext.Vector(-260+offset.x, -40+offset.y)),
-rp('00102', 'end', 1, [], ext.Vector(285+offset.x, 217+offset.y)),
+rp('00102', 'start', 475, [bs('Телефонная улица', 35)], ext.Vector(6312, 1176)),
+rp('00101', 'alights', 150, [bs('Северо-Западная улица', 149), trl('lineleft', 4, 1), trl('lineright', 35, 1), trl('up', 20, 2)], ext.Vector(5663, 873)),
+rp('00100', 'end', 1,
+   [],
+   ext.Vector(5469, 780))
 ])[0]
-#asz1 = [rp('10100', 'start', 305, [], ext.Vector(100, 100)), rp('10101', 'end', 310, [], ext.Vector(50, 250))]  # 'svetofory' 'ostanovku'
-testway = at
+asz1 = rpcollection([
+rp('10100', 'start', 150,
+   [bs('Северо-Западная улица', 2), trl('down', 121, 1)],
+   ext.Vector(5431, 794)),
+rp('10101', 'alights', 475, [bs('Телефонная улица', 466, False)], ext.Vector(5654, 894)),
+rp('10102', 'end', 1, [], ext.Vector(6301, 1199)),
+])[0]
+
+amr0 = rpcollection([
+    rp('10200', 'start', 1100,
+       [bs('Стоматологическая поликлиника № 2', 62), bs('Дворец культуры', 553), bs('Хозяйственный магазин', 903)],
+       ext.Vector(3805, 34)),
+    rp('10201', 'end', 200, [], ext.Vector(5201, 684))
+])[0]
+testway = at0 + asz0
 
 cc = 0
-buses53 = [bus(at, '53', 70) for i in range(0, 5)]
-buses144 = [bus(at, '144', 30) for i in range(0, 3)]
+buses53 = [bus(testway, '53', 70) for i in range(0, 5)]
+buses144 = [bus(testway, '144', 30) for i in range(0, 3)]
 scene.AddObjects([camera])
 scene.AddObjects(buses53)
 scene.AddObjects(buses144)
 for gm in scene.GetActive(True):
     for comp in gm.components:
+        if comp.enabled:
             comp.Start()
 runtimeActive = True
 while runtimeActive:
@@ -273,7 +298,7 @@ while runtimeActive:
     # print(player.transform.TryGetComponent(mono.SpriteRenderer).layer, bcg.transform.TryGetComponent(mono.SpriteRenderer).layer)
     for gameObject in scene.GetActive(True):
         for comp in gameObject.components:
-            if (var.render.defaults.__contains__(type(comp)) == False):
+            if (var.render.defaults.__contains__(type(comp)) == False) and comp.enabled:
                 comp.Update()
 
 
@@ -281,7 +306,7 @@ while runtimeActive:
         rendList = []
         for gm in scene.GetActive(True):
             for comp in gm.components:
-                if (type(comp) == rr): rendList.append(comp)
+                if (type(comp) == rr)  and comp.enabled: rendList.append(comp)
         rendList.sort(key=lambda r: r.layer, reverse=False)
         for rend in rendList: 
             rend.Update()

@@ -97,6 +97,7 @@ class SpriteRenderer(Mono):
     offset = Vector.Zero()
     color = [0, 0, 0, 255]
     layer = 0
+    forceblit = False
     def __init__(self, image: Sprite, offset=Vector.Zero(), layer=0, color=[255, 255, 255, 255.0]):
         self.image = image
         self.color = color
@@ -125,13 +126,15 @@ class SpriteRenderer(Mono):
         core.screen.blit(img, (blitpos.x, blitpos.y))
 
     def CanBlit(self) -> bool:
+        if self.forceblit:
+            return True
         blitpos = Vector.Zero()
         if core.mainCamera.gameObject.transform.parent:
             blitpos += core.mainCamera.gameObject.transform.parent.transform.position
         blitpos += core.mainCamera.gameObject.transform.position
         blitrange = [
-            Vector(blitpos.x - core.mainCamera.screenSize.x / 1, blitpos.x + core.mainCamera.screenSize.x / 1),
-            Vector(blitpos.y - core.mainCamera.screenSize.y / 1, blitpos.y + core.mainCamera.screenSize.y / 1)
+            Vector(blitpos.x - core.mainCamera.screenSize.x / 1.2, blitpos.x + core.mainCamera.screenSize.x / 1),
+            Vector(blitpos.y - core.mainCamera.screenSize.y / 1.2, blitpos.y + core.mainCamera.screenSize.y / 1)
                     ]
         #print(core.mainCamera.gameObject.transform.position)
         pos = self.transform.position + self.offset
@@ -146,7 +149,9 @@ class SpriteRenderer(Mono):
         start = inx and iny
         end = endx and endy
         center = ctrx and ctry
-        return start or end or center
+        down = inx and endy
+        up = endx and iny
+        return start or end or center or down or up
 
 
 class Text(Mono):
@@ -185,7 +190,7 @@ class Text(Mono):
 class PlayerController(Mono):
     lerpTime = .0
     strength = 2
-    baseSpeed = 400*2
+    baseSpeed = 400*3
     def Update(self):
         totalSpeed = self.baseSpeed * self.lerpTime
         if core.iinput.horizontal != 0 and core.iinput.vertical != 0: totalSpeed *= .54**.5
@@ -423,25 +428,25 @@ class CarObjectLogic(Mono):
             if obj.AllowStream(self) is False:
                 self.__canDrive = False
                 self.__lerpspeed = 0
-                print('object')
+
                 return
         if self.__currentPoint.get_stuck():
             for car in self.__currentPoint.get_cars():
-                if d < car.__currentDistance < d + 8.9:
+                if d < car.__currentDistance < d + 8:
                     if car.__canDrive is False:
                         self.__canDrive = False
                         self.__lerpspeed = 0
-                        print('car')
+
                         return
                     else:
                         if car.__car.get_cartype() == CarTypes.Bus or car.__car.get_cartype() == CarTypes.Trolleybus:
                             if car.transform.GetComponent(Bus)._Bus__stoptime <= 0:
                                 self.__lerpspeed = clamp(self.__lerpspeed - .1, 0, 1)
-                                print('car')
+
         self.__canDrive = True
     def Drive(self):
         if self.__canDrive:
-            self.__lerpspeed = clamp(self.__lerpspeed + core.deltaTime * .66, 0, 1)
+            self.__lerpspeed = clamp(self.__lerpspeed + core.deltaTime * .8, 0, 1)
         secspeed = self.__speed / 3.6
         self.__currentDistance += core.deltaTime * (secspeed * self.__lerpspeed)
         self.transform.position = Vector.Lerp(self.__startPos,
@@ -523,8 +528,9 @@ class Bus(CarObjectLogic):
             if obj.get_objid() not in self.__reachedstops:
                 obj.canAdd = False
                 self.__lerpspeed = 0
-                print('bus stopped')
                 self.__stoptime = random.uniform(3, 7)
                 self.__reachedstops.append(obj.get_objid())
     def get_uniqid(self):
         return self._CarObjectLogic__uniqId
+    def get_route(self):
+        return self.__route
