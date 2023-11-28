@@ -248,7 +248,7 @@ rp('00000', 'start', 640, [], ext.Vector(7524, 1748)),
 ], True)[0]
 asz0 = rpcollection([
 rp('00102', 'start', 475, [bs('Телефонная улица', 35)], ext.Vector(6312, 1176)),
-rp('00101', 'alights', 150, [bs('Северо-Западная улица', 149), trl('lineleft', 4, 1), trl('lineright', 35, 1), trl('up', 20, 2)], ext.Vector(5663, 873)),
+rp('00101', 'alights', 150, [bs('Северо-Западная улица', 149), trl('lineleft', 4, 1), trl('lineright', 35, 1)], ext.Vector(5663, 873)),
 rp('00100', 'end', 1,
    [],
    ext.Vector(5469, 780))
