@@ -139,7 +139,9 @@ def __follow(args):
     print("Чтобы выйти нажмите '~'")
 def __map(args):
     if len(args) == 0:
-        # print maps
+        for map in c.maps:
+            sr = map.transform.GetComponent(c.mono.SpriteRenderer)
+            sr.enabled = not sr.enabled
         return
     match args[0]:
         case 'low':
@@ -152,11 +154,7 @@ def __map(args):
         case 'high':
             for map in c.maps:
                 rend.lowmaps = False
-                rend.mapsize = float(args[1])
+                rend.mapsize = 1
                 map.transform.SetScale(rend.mapsize, rend.mapsize)
                 map.transform.GetComponent(c.mono.SpriteRenderer).image = c.ext.Sprite(
                     "Graphics/map/" + map.name + '.png')
-        case 'switch':
-            for map in c.maps:
-                sr = map.transform.GetComponent(c.mono.SpriteRenderer)
-                sr.enabled = not sr.enabled

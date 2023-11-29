@@ -511,7 +511,7 @@ class Bus(CarObjectLogic):
 
         txt = self.transform.GetComponent(Text)
         if txt != False:
-            txt.text = f"{self.__passengers}/{self.__maxpassengers}"
+            txt.text = f"{self.__passengers}"
     def BusStopCheck(self):
         d = self._CarObjectLogic__currentDistance
         for obj in self._CarObjectLogic__currentPoint.get_objects():

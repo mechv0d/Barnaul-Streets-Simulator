@@ -135,7 +135,7 @@ def bs(name, inpos, show=True):
     if show:
         bus.AddComponent(mono.SpriteRenderer(ext.Sprite('Graphics/stop.png'), ext.Vector.Zero(), -5))
         bus.AddComponent(
-        mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10), "", ext.Vector(-15, -37)))
+        mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10), "", ext.Vector(-20, -12)))
     bus.transform.SetScale(.66, .66)
     b = mono.BusStop(name, inpos)
     bus.AddComponent(b)
@@ -169,11 +169,11 @@ def bus(way, route: str, maxp, _car=None):
     obj.AddComponent(_car)
     w0 = way[0] #random.randint(0, len(way) - 2)
     w1 = way[-1] #random.randint(w0, len(way)-1)
-    obj.AddComponent(mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10), ''))
+    obj.AddComponent(mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10), '', ext.Vector(3, 6)))
     bus = obj.AddComponent(mono.Bus(_car, mono.Car.Driver(), w0, way, w1, route, maxp))
     obj.name += ' ' + str(bus.get_uniqid())
     return obj
-def map(name, path, pos, size=ext.Vector(.2, .2), forceblit = False):
+def map(name, path, pos, size=ext.Vector(.2, .2), forceblit=False):
     gm = GameObject(name, 'def')
     gm.transform.SetScale(size.x, size.y)
     rend = mono.SpriteRenderer(ext.Sprite(path), ext.Vector.Zero(), -100, [255, 255, 255, 100])
@@ -214,7 +214,7 @@ camera = GameObject("Camera", "def")
 c.mainCamera = camera.AddComponent(mono.Camera((1280, 720), 60, 1))
 camera.AddComponent(mono.PlayerController())
 cam = camera.transform.GetComponent(mono.Camera)
-camera.transform.SetPos(4933, 410)#-cam.screenSize.x/2, -cam.screenSize.y/2)
+camera.transform.SetPos(3127, -411)
 camera.transform.position -= ext.Vector(-30, -30) # откуда этот offset я без понятия
 
 c.lightsControllers.append(lc(13.0, 60.0, False))  # 0
@@ -249,7 +249,7 @@ rp('00000', 'start', 640, [], ext.Vector(7524, 1748)),
 asz0 = rpcollection([
 rp('00102', 'start', 475, [bs('Телефонная улица', 35)], ext.Vector(6312, 1176)),
 rp('00101', 'alights', 150, [bs('Северо-Западная улица', 149), trl('lineleft', 4, 1), trl('lineright', 35, 1)], ext.Vector(5663, 873)),
-rp('00100', 'end', 1,
+rp('00100', 'end', 200,
    [],
    ext.Vector(5469, 780))
 ])[0]
@@ -260,14 +260,46 @@ rp('10100', 'start', 150,
 rp('10101', 'alights', 475, [bs('Телефонная улица', 466, False)], ext.Vector(5654, 894)),
 rp('10102', 'end', 1, [], ext.Vector(6301, 1199)),
 ])[0]
-
 amr0 = rpcollection([
+    rp('00200', 'start', 1100,
+       [bs('Стоматологическая поликлиника № 2', 1040), bs('Дворец культуры', 553),
+        bs('Хозяйственный магазин', 202), trl('light', 575, 1)],
+       ext.Vector(5212, 663)),
+    rp('00201', 'end', 42, [], ext.Vector(3814, 9))
+])[0]
+amr1 = rpcollection([
     rp('10200', 'start', 1100,
-       [bs('Стоматологическая поликлиника № 2', 62), bs('Дворец культуры', 553), bs('Хозяйственный магазин', 903)],
+       [bs('Стоматологическая поликлиника № 2', 122), bs('Дворец культуры', 553), bs('Хозяйственный магазин', 903)],
        ext.Vector(3805, 34)),
     rp('10201', 'end', 200, [], ext.Vector(5201, 684))
 ])[0]
-testway = at0 + asz0
+mr0 = rpcollection([
+    rp('00300', 'start', 42, [],
+       ext.Vector(3780, -25)),
+    rp('00301', '1', 46, [],
+       ext.Vector(3751, -88)),
+    rp('00302', '2', 51, [],
+       ext.Vector(3710, -106)),
+    rp('00303', '3', 114, [bs('Улица Малахова', 68)],
+       ext.Vector(3626, -69)),
+    rp('00304', 'end', 1,
+        [],
+        ext.Vector(3480, -85))
+])[0]
+
+aapr0 = rpcollection([
+    rp('00400', 'start', 444,
+        [trl('trl', 0, 1), bs('Улица Островского', 422)],
+        ext.Vector(3480, -85)),
+    rp('00401', 'ostrov', 444,
+        [],
+        ext.Vector(2866, -177)),
+    rp('00402', 'end', 1030,
+        [trl('trl', 1, 1), bs('Трактовая', 523)],
+        ext.Vector(1435, -398)),
+])[0]
+
+testway = mr0 + aapr0
 
 cc = 0
 buses53 = [bus(testway, '53', 70) for i in range(0, 5)]
@@ -286,9 +318,9 @@ while runtimeActive:
     var.core.iinput.UpdateInput(keys)
     var.core.deltaTime = clock.tick(var.core.mainCamera.targetFramerate) / 1000
     var.core.screen.fill('black')
-    print(c.iinput.cursorWorldPosition)
     #var.core.screen.blit(pygame.Surface([1000, 1000]), (0, 0))
     if c.iinput.keys[pygame.K_e]:
+        print(c.iinput.cursorWorldPosition)
         debugstop = True
     if c.iinput.keys[pygame.K_q]:
         front.StartConsoleDialogue()
