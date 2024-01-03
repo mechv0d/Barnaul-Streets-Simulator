@@ -18,17 +18,19 @@ class Font():
 def lerp(a, b, t: float):
     return a * (1 - t) + b * t
 def clamp(number, min, max):
-    return min if number < min else max if number> max else number
+    return min if number < min else max if number > max else number
 class Vector():
     x = 0
     y = 0
+
+    @staticmethod
+    def zero():
+        return Vector(0, 0)
     def __init__(self, x=0.0, y=0.0):
      self.x = x
      self.y = y
     def AsString(self, roundnums=2):
         return f'({round(self.x, roundnums)}, {round(self.y, roundnums)})'
-    def Zero():
-        return Vector(0, 0)
     def __add__(self, other):
         if not isinstance(other, Vector):
             raise ArithmeticError("Правый операнд должен быть вектором")

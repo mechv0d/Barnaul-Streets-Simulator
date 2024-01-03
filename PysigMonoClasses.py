@@ -3,14 +3,38 @@ from PysigExtensions import Sprite, Font, Vector, clamp, lerp
 import pygame
 import random as rd
 import enum
-from PysigOptions import core
+from PysigOptions import core, flags, flag_names as ff
 from abc import ABC
 class Mono(ABC):
-    enabled = True
+    __enabled = True
     # game object:
-    gameObject = None
-    transform = None
+    __gameObject = None
+    __transform = None
+
+    @property
+    def enabled(self):
+        return self.__enabled
+
+    @enabled.setter
+    def enabled(self, new:bool):
+        self.__enabled = new
+    @property
+    def gameObject(self):
+        return self.__gameObject
+
+    @gameObject.setter
+    def gameObject(self, new):
+        self.__gameObject = new
+    @property
+    def transform(self):
+        return self.__transform
+
+    @transform.setter
+    def transform(self, new):
+        self.__transform = new
     def Start(self):
+        pass
+    def EarlyUpdate(self):
         pass
     def Update(self):
         pass
@@ -21,11 +45,46 @@ class Mono(ABC):
         self.transform = gm.transform
 
 class Transform(Mono):
-    position = Vector.Zero()
-    rotation = 0
-    scale = Vector(1, 1)
-    parent = None
-    childs = []
+    __position = Vector.zero()
+    __rotation = 0
+    __scale = Vector(1, 1)
+    __parent = None # GameObject
+    __childs = list
+    # region Properties
+    @property
+    def position(self):
+        return self.__position
+    @position.setter
+    def position(self, value:Vector):
+        self.SetPos(value.x, value.y)
+    @property
+    def rotation(self):
+        return self.__rotation
+    @rotation.setter
+    def rotation(self, value):
+        self.SetRot(value)
+    @property
+    def scale(self):
+        return self.__scale
+    @scale.setter
+    def scale(self, value:Vector):
+        self.SetScale(value.x, value.y)
+    @property
+    def parent(self):
+        return self.__parent
+    @parent.setter
+    def parent(self, value):
+        if value != None:
+            self.SetParent(value)
+        else:
+            self.RemoveParent()
+    @property
+    def childs(self):
+        return self.__childs
+    @childs.setter
+    def childs(self, value):
+        self.__childs = value
+    # endregion
     def __init__(self, pos: Vector, rot: float, scale: Vector):
         self.parent = None
         self.childs = []
@@ -35,7 +94,7 @@ class Transform(Mono):
     def __init__(self):
         self.parent = None
         self.childs = []
-        self.position = Vector.Zero()
+        self.position = Vector.zero()
         self.rotation = 0
         self.scale = Vector(1, 1)
     def AddChild(self, child): # CHILD IS GAME OBJECT!!!!
@@ -43,17 +102,19 @@ class Transform(Mono):
         child.transform.parent = self.gameObject
     def SetParent(self, other): # PARENT IS GAME OBJECT!!!!
         other.transform.childs.append(self.gameObject)
-        self.parent = other
+        self.__parent = other
         self.position = self.position - other.transform.position
     def RemoveParent(self):
+        if self.parent == None:
+            return
         self.parent.childs.remove(self)
         self.parent = None
     def SetPos(self, x, y):
-        self.position = Vector(x, y)
+        self.__position = Vector(x, y)
     def SetRot(self, z):
-        self.rotation = z
+        self.__rotation = z
     def SetScale(self, x, y):
-        self.scale = Vector(x, y)
+        self.__scale = Vector(x, y)
     def SetPixelSize(self, wight, height):
         rend = self.GetComponent(SpriteRenderer)
         if rend != False:
@@ -92,13 +153,49 @@ class Transform(Mono):
             if child.selfActive or inactive:
                 child.transform.GetRecursive(array, inactive)
 class SpriteRenderer(Mono):
-    image = Sprite("Graphics/def.png")
-    offseted = False
-    offset = Vector.Zero()
-    color = [0, 0, 0, 255]
-    layer = 0
-    forceblit = False
-    def __init__(self, image: Sprite, offset=Vector.Zero(), layer=0, color=[255, 255, 255, 255.0]):
+    __image = Sprite("Graphics/def.png")
+    __offseted = False
+    __offset = Vector.zero()
+    __color = [0, 0, 0, 255]
+    __layer = 0
+    __forceblit = False
+    @property
+    def image(self):
+        return self.__image
+    @image.setter
+    def image(self, value):
+        self.__image = value
+    @property
+    def offseted(self):
+        return self.__offseted
+    @offseted.setter
+    def offseted(self, value):
+        self.__offseted = value
+    @property
+    def offset(self):
+        return self.__offset
+    @offset.setter
+    def offset(self, value):
+        self.__offset = value
+    @property
+    def color(self):
+        return self.__color
+    @color.setter
+    def color(self, value):
+        self.__color = value
+    @property
+    def layer(self):
+        return self.__layer
+    @layer.setter
+    def layer(self, value):
+        self.__layer = value
+    @property
+    def forceblit(self):
+        return self.__forceblit
+    @forceblit.setter
+    def forceblit(self, value):
+        self.__forceblit = value
+    def __init__(self, image: Sprite, offset=Vector.zero(), layer=0, color=[255, 255, 255, 255.0]):
         self.image = image
         self.color = color
         self.layer = layer
@@ -128,7 +225,7 @@ class SpriteRenderer(Mono):
     def CanBlit(self) -> bool:
         if self.forceblit:
             return True
-        blitpos = Vector.Zero()
+        blitpos = Vector.zero()
         if core.mainCamera.gameObject.transform.parent:
             blitpos += core.mainCamera.gameObject.transform.parent.transform.position
         blitpos += core.mainCamera.gameObject.transform.position
@@ -152,17 +249,59 @@ class SpriteRenderer(Mono):
         down = inx and endy
         up = endx and iny
         return start or end or center or down or up
-
-
 class Text(Mono):
-    font = None  # Font()
-    offset = Vector.Zero()
-    layer = 0
-    text = ''
-    antialias = False
-    color = [255, 255, 255, 255]
-    bcg = None
-    def __init__(self, font: Font, text, offset = Vector.Zero(), layer=0, antialias=True, color='White', bcg=None):
+    __font = None  # Font()
+    __offset = Vector.zero()
+    __layer = 0
+    __text = ''
+    __antialias = False
+    __color = [255, 255, 255, 255]
+    __bcg = None
+    # region Properties
+    @property
+    def font(self):
+        return self.__font
+    @font.setter
+    def font(self, value):
+        self.__font = value
+    @property
+    def offset(self):
+        return self.__offset
+    @offset.setter
+    def offset(self, value):
+        self.__offset = value
+    @property
+    def layer(self):
+        return self.__layer
+    @layer.setter
+    def layer(self, value):
+        self.__layer = value
+    @property
+    def text(self):
+        return self.__text
+    @text.setter
+    def text(self, value):
+        self.__text = value
+    @property
+    def antialias(self):
+        return self.__antialias
+    @antialias.setter
+    def antialias(self, value):
+        self.__antialias = value
+    @property
+    def color(self):
+        return self.__color
+    @color.setter
+    def color(self, value):
+        self.__color = value
+    @property
+    def bcg(self):
+        return self.__bcg
+    @bcg.setter
+    def bcg(self, value):
+        self.__bcg = value
+    # endregion
+    def __init__(self, font: Font, text, offset = Vector.zero(), layer=0, antialias=True, color='White', bcg=None):
         self.font = font
         self.text = text
         self.offset = offset
@@ -186,29 +325,174 @@ class Text(Mono):
         if isinstance(self.color, list):
             txt.set_alpha(self.color[3])
         core.screen.blit(txt, (blitpos.x, blitpos.y))
+class Tick(Mono):
+
+    # region Fields
+    __debug = False
+    __name = 'tick'
+    __timeLeft = 0
+    __timeMax = 1
+    __random = False
+    __randBounds = Vector(1, 1)
+    __events = list[tuple[type, list]]
+    # endregion
+
+    # region Properties
+    @property
+    def debug(self):
+        return self.__debug
+
+    @debug.setter
+    def debug(self, value:bool):
+        self.__debug = value
+    @property
+    def name(self):
+        return self.__name
+    @name.setter
+    def name(self, value):
+        self.__name = value
+    @property
+    def timeLeft(self):
+        return self.__timeLeft
+    @timeLeft.setter
+    def timeLeft(self, value):
+        self.__timeLeft = value
+    @property
+    def timeMax(self):
+        return self.__timeMax
+    @timeMax.setter
+    def timeMax(self, value):
+        self.__timeMax = value
+    @property
+    def random(self):
+        return self.__random
+    @random.setter
+    def random(self, value:bool):
+        self.__random = value
+    @property
+    def randBounds(self):
+        return self.__randBounds
+    @randBounds.setter
+    def randBounds(self, value:Vector):
+        self.__randBounds = value
+    @property
+    def events(self):
+        return self.__events
+    # endregion
+
+    # region Init
+    def __init__(self, name:str, timeMax:float, events:[]):
+        self.name = name
+        self.timeMax = timeMax
+        self.timeLeft = timeMax
+        self.__events = events
+    # endregion
+
+    # region Mono Methods
+    def EarlyUpdate(self):
+        self.timeLeft -= core.deltaTime
+        if self.timeLeft <= 0:
+            if self.debug: print(f'{self.name} tick is called!')
+            self.EventsCall()
+            self.TickRestart()
+    # endregion
+
+    # region Custom Methods
+    @staticmethod
+    def CreateObject(name:str, timeMax:float, events:[]):
+        gameObject = core.GameObject(f'{name} tick', 'def')
+        tick = Tick(name, timeMax, events)
+        gameObject.AddComponent(tick)
+        return gameObject
+    def SetAsRandom(self, minTime, maxTime):
+        self.random = True
+        self.randBounds = Vector(minTime, maxTime)
+        self.TickRestart()
+    def TickRestart(self):
+        if not self.__random:
+            self.timeLeft = self.timeMax
+        else:
+            r = self.randBounds
+            self.timeLeft = self.timeMax = random.uniform(r.x, r.y)
+    def EventsCall(self):
+        for event in self.events:
+            event[0](*event[1])
+    def EventAdd(self, eventType:type, eventArgs:list):
+        self.events.append((eventType, eventArgs))
+    def EventRemove(self, eventType:type, single=True):
+        for event in self.events:
+            if event[0] == eventType:
+                self.__events.remove(event)
+                if single: return
+    def EventRemove(self, eventType:type, eventArgs:list, single=True):
+        for event in self.events:
+            if event[0] == eventType and event[1] == eventArgs:
+                self.__events.remove(event)
+                if single: return
+    def EventsClear(self):
+        self.__events.clear()
+    def EventsReverse(self):
+        self.__events.reverse()
+    # endregion
 
 class PlayerController(Mono):
-    lerpTime = .0
-    strength = 2
-    baseSpeed = 400*3
+    __lerpTime = 0
+    __strength = 2
+    __baseSpeed = 400*3
+    @property
+    def strength(self):
+        return self.__strength
+    @strength.setter
+    def strength(self, value):
+        self.__strength = value
+    @property
+    def baseSpeed(self):
+        return self.__baseSpeed
+
+    @baseSpeed.setter
+    def baseSpeed(self, value):
+        self.__baseSpeed = value
     def Update(self):
-        totalSpeed = self.baseSpeed * self.lerpTime
+        totalSpeed = self.baseSpeed * self.__lerpTime
         if core.iinput.horizontal != 0 and core.iinput.vertical != 0: totalSpeed *= .54**.5
         v = Vector(core.iinput.horizontal, core.iinput.vertical)
-        if v != Vector.Zero():
-            self.lerpTime += core.deltaTime * self.strength
+        if v != Vector.zero():
+            self.__lerpTime += core.deltaTime * self.strength
         else:
-            self.lerpTime = 0
-        self.lerpTime = clamp(self.lerpTime, 0, 1)
+            self.__lerpTime = 0
+        self.__lerpTime = clamp(self.__lerpTime, 0, 1)
 
         self.transform.position += v * totalSpeed * core.deltaTime
-      #  self.transform.position.x += core.iinput.horizontal * totalSpeed * core.deltaTime
-       # self.transform.position.y += core.iinput.vertical * totalSpeed * core.deltaTime
 class Camera(Mono):
-    followAt = None
-    screenSize = Vector(800, 600)
-    targetFramerate = 60
-    vsync = 0
+    __followAt = None
+    __screenSize = Vector(800, 600)
+    __targetFramerate = 60
+    __vsync = 0
+    @property
+    def followAt(self):
+        return self.__followAt
+
+    @followAt.setter
+    def followAt(self, value):
+        self.__followAt = value
+    @property
+    def screenSize(self):
+        return self.__screenSize
+    @screenSize.setter
+    def screenSize(self, value):
+        self.__screenSize = value
+    @property
+    def targetFramerate(self):
+        return self.__targetFramerate
+    @targetFramerate.setter
+    def targetFramerate(self, value):
+        self.__targetFramerate = value
+    @property
+    def vsync(self):
+        return self.__vsync
+    @vsync.setter
+    def vsync(self, value):
+        self.__vsync = value
     def __init__(self, size=(800, 600), framerate=60, vsync = 0):
         self.screenSize = Vector(size[0], size[1])
         self.targetFramerate = framerate
@@ -224,8 +508,8 @@ class RoadPoint(Mono):
     __id = '00000' # 0-направление движения (0 - налево, 1 - направо, 2 - в обе), 00-отрезок трассы, 00-маленькая часть отрезка
     __name = 'default'
     __distance = 1
-    __objects = [][:]
-    __cars = [][:]
+    __objects = []
+    __cars = []
     __way = None  # []
     __carscanstuck = False
     def __init__(self, id: str, name, distance, objects):
@@ -233,6 +517,7 @@ class RoadPoint(Mono):
         self.__name = name
         self.__distance = distance
         self.__objects = objects
+        self.__cars = []
     def Start(self):
         for i in self.__objects:
             if not self == self.__way[-1]:
@@ -247,6 +532,8 @@ class RoadPoint(Mono):
             core.scene.AddObject(i.gameObject)
             for j in i.gameObject.components:
                 j.Start()
+    def Update(self):
+        pass
     def get_cars(self):
         return self.__cars
     def set_way(self, way):
@@ -257,6 +544,8 @@ class RoadPoint(Mono):
         return self.__distance
     def get_stuck(self):
         return self.__carscanstuck
+    def get_id(self):
+        return self.__id
 
 
 class RoadObjectTypes(enum.Enum):
@@ -310,8 +599,8 @@ class TrafficLight(RoadObject):
     __canPass = False
     __controllerIndex = 0 # есть массив с bool переменными, и каждый светофор будет ссылаться на определённый объект в массив
     def ReturnAsString(self) -> str:
-        return f"{str(self.__objType).split('.')[1]}, {self.__objId}, {self.__name}, {self.__position} м. от начала отрезка, " \
-               f"{'Зеленый' if self.__canPass else 'Красный'} ещё {round(core.lightsControllers[self.__controllerIndex].time, 1)} сек."
+        return f"{str(self._RoadObject__objType).split('.')[1]}, {self._RoadObject__objId}, {self._RoadObject__name}, {self._RoadObject__position} м. от начала отрезка, " \
+               f"{'Зеленый' if self.__canPass else 'Красный'} ещё {round(core.lightsControllers[self.__controllerIndex]._LightController__time, 1)} сек."
     def Update(self):
         self.__canPass = core.lightsControllers[self.__controllerIndex].canPass()
         txt = self.transform.GetComponent(Text)
@@ -331,12 +620,13 @@ class TrafficLight(RoadObject):
 class BusStop(RoadObject):
     __canAdd = True
     __passengers = 0
-    __time = 7.0
-    __coeff = int(__time) // 3
+    __time = 15.0
+    __coeffDiv = 4
+    __coeff = int(__time) // __coeffDiv
     def Start(self):
-        self.__passengers = random.randint(1, 14)
+        self.__passengers = random.randint(0, 8)
     def ReturnAsString(self) -> str:
-        return f"{str(self.__objType).split('.')[1]}, {self.__objId}, {self.__name}, {self.__position} м. от начала отрезка, {self.__passengers} " \
+        return f"{str(self._RoadObject__objType).split('.')[1]}, {self._RoadObject__objId}, {self._RoadObject__name}, {self._RoadObject__position} м. от начала отрезка, {self.__passengers} " \
                f"{'пассажир' if self.__passengers % 10 == 1 and self.__passengers != 11 else 'пассажира' if self.__passengers % 10 in [2, 3, 4] and self.__passengers not in [12, 13, 14] else 'пассажиров'}"
     def RemovePassengers(self, max:int):
         p = self.__passengers
@@ -345,8 +635,8 @@ class BusStop(RoadObject):
         return count
     def AddPassengers(self):
         self.__passengers += random.randint(0, self.__coeff)
-        self.__time = random.uniform(7, 17)
-        self.__coeff = int(self.__time) // 3
+        self.__time = random.uniform(11, 18)
+        self.__coeff = int(self.__time) // self.__coeffDiv
     def Update(self):
         if self.__canAdd:
             self.__time -= core.deltaTime
@@ -402,8 +692,8 @@ class CarObjectLogic(Mono):
     __lerpspeed = .4  # in range btw 0 and 1
     __speed = 1  # car.baseSpeed
     __currentDistance = 0  # from 0 to currentPoint.distance
-    __startPos = Vector.Zero()
-    __currentPoint = None
+    __startPos = Vector.zero()
+    __currentPoint = RoadPoint
     __path = [][:]
     __endPoint = None
     def __init__(self, car, driver, currentPoint, path:[], endPoint):
@@ -412,7 +702,7 @@ class CarObjectLogic(Mono):
         self.__driver = driver
         self.__speed = car.get_speed() * driver.baseRush
         self.__currentPoint = currentPoint
-        self.__currentPoint.cars.append(self)
+        self.__currentPoint.get_cars().append(self)
         self.__path = path
         self.__endPoint = endPoint
     def Start(self):
@@ -420,6 +710,8 @@ class CarObjectLogic(Mono):
     def ReturnAsString(self) -> str:
         pass
 
+    def get_uniqid(self):
+        return self.__uniqId
     def Check(self):
         d = self.__currentDistance
         for obj in self.__currentPoint.get_objects():
@@ -428,6 +720,11 @@ class CarObjectLogic(Mono):
             if obj.AllowStream(self) is False:
                 self.__canDrive = False
                 self.__lerpspeed = 0
+                #print(self.__car.get_cartype())
+                if self.__car.get_cartype() == CarTypes.Bus:
+                    pass
+                   # print(self.__currentPoint.get_id(), obj.get_position(), d)
+                #print(f'STOPPED BY {obj.get_position()}', d)
 
                 return
         if self.__currentPoint.get_stuck():
@@ -436,12 +733,15 @@ class CarObjectLogic(Mono):
                     if car.__canDrive is False:
                         self.__canDrive = False
                         self.__lerpspeed = 0
+                        #print('STOPPED BY CAR')
 
                         return
                     else:
                         if car.__car.get_cartype() == CarTypes.Bus or car.__car.get_cartype() == CarTypes.Trolleybus:
                             if car.transform.GetComponent(Bus)._Bus__stoptime <= 0:
-                                self.__lerpspeed = clamp(self.__lerpspeed - .1, 0, 1)
+                                pass
+                                #self.__lerpspeed = clamp(self.__lerpspeed - .1, 0, 1)
+
 
         self.__canDrive = True
     def Drive(self):
@@ -466,17 +766,19 @@ class CarObjectLogic(Mono):
             self.__startPos = self.transform.position
     def __remove(self):
         core.scene.objects.remove(self.gameObject)
-        print(f'{self.__car.get_cartype().value} #{self.__uniqId} has reached the end!')
+        if flags.get(ff.log_end_reach_message):
+            print(f'{self.__car.get_cartype().value} #{self.__uniqId} has reached the end!')
         if self.transform.parent:
             self.transform.RemoveParent()
         cam = core.mainCamera
         if cam.followAt == self.gameObject:
             cam.followAt = None
+        del self
 
 class Passenger(CarObjectLogic):
     def Update(self):
         self.Check()
-        if self.__canDrive:
+        if self._CarObjectLogic__canDrive:
             self.Drive()
 class Bus(CarObjectLogic):
     __route = '0'
@@ -503,6 +805,9 @@ class Bus(CarObjectLogic):
     def Update(self):
         self.Check()
         self.BusStopCheck()
+        if self._CarObjectLogic__lerpspeed < .5:
+            pass
+           # print(self._CarObjectLogic__currentPoint.get_id(), self._CarObjectLogic__currentDistance)
         if self.__stoptime > 0:
             self.__stoptime -= core.deltaTime
         else:
@@ -530,7 +835,6 @@ class Bus(CarObjectLogic):
                 self.__lerpspeed = 0
                 self.__stoptime = random.uniform(3, 7)
                 self.__reachedstops.append(obj.get_objid())
-    def get_uniqid(self):
-        return self._CarObjectLogic__uniqId
+                #print('REACHED STOP')
     def get_route(self):
         return self.__route

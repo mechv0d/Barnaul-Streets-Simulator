@@ -1,0 +1,11 @@
+{
+    "windowSize": [
+        620,
+        420
+    ],
+    "framerate": 60,
+    "vsync": 0,
+    "renderMaps": true,
+    "lowmaps": true,
+    "mapsize": 2.0
+}
