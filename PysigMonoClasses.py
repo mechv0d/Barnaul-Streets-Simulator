@@ -400,6 +400,7 @@ class Tick(Mono):
     # region Custom Methods
     @staticmethod
     def CreateObject(name:str, timeMax:float, events:[]):
+        gameObject: core.GameObject
         gameObject = core.GameObject(f'{name} tick', 'def')
         tick = Tick(name, timeMax, events)
         gameObject.AddComponent(tick)
@@ -534,18 +535,20 @@ class RoadPoint(Mono):
                 j.Start()
     def Update(self):
         pass
-    def get_cars(self):
+    def get_cars(self) -> list:
         return self.__cars
     def set_way(self, way):
         self.__way = way
-    def get_objects(self):
+    def get_objects(self) -> list:
         return self.__objects
-    def get_distance(self):
+    def get_distance(self) -> float:
         return self.__distance
-    def get_stuck(self):
+    def get_stuck(self) -> bool:
         return self.__carscanstuck
-    def get_id(self):
+    def get_id(self) -> str:
         return self.__id
+    def set_id(self, other: str):
+        self.__id = other
 
 
 class RoadObjectTypes(enum.Enum):
@@ -623,6 +626,19 @@ class BusStop(RoadObject):
     __time = 15.0
     __coeffDiv = 4
     __coeff = int(__time) // __coeffDiv
+    @property
+    def passengers(self):
+        return self.__passengers
+
+    @passengers.setter
+    def passengers(self, value):
+        self.__passengers = value
+    @property
+    def coeffDiv(self):
+        return self.__coeffDiv
+    @coeffDiv.setter
+    def coeffDiv(self, value):
+        self.__coeffDiv = value
     def Start(self):
         self.__passengers = random.randint(0, 8)
     def ReturnAsString(self) -> str:
@@ -665,9 +681,9 @@ class Car(Mono):
     __carId = str(rd.randint(0, 10**4)).zfill(4)
     __carType = CarTypes.Passenger
     __carName = 'default'
-    __baseSpeed = 170
+    __baseSpeed = 50
     #color = [255, 255, 255, 255]
-    def __init__(self, type, name, speed=150):
+    def __init__(self, type, name, speed=50):
         self.__carType = type
         self.__carName = name
         self.__baseSpeed = speed
@@ -690,17 +706,29 @@ class CarObjectLogic(Mono):
     __driver = None # Car.Driver()
     __canDrive = True
     __lerpspeed = .4  # in range btw 0 and 1
-    __speed = 1  # car.baseSpeed
     __currentDistance = 0  # from 0 to currentPoint.distance
     __startPos = Vector.zero()
     __currentPoint = RoadPoint
     __path = [][:]
     __endPoint = None
+    @property
+    def driver(self) -> Car.Driver:
+        return self.__driver
+
+    @driver.setter
+    def driver(self, value: Car.Driver):
+        self.__driver = value
+    @property
+    def car(self) -> Car:
+        return self.__car
+
+    @car.setter
+    def car(self, value: Car):
+        self.__car = value
     def __init__(self, car, driver, currentPoint, path:[], endPoint):
         self.__uniqId = str(rd.randint(0, 10**4)).zfill(4)
         self.__car = car
         self.__driver = driver
-        self.__speed = car.get_speed() * driver.baseRush
         self.__currentPoint = currentPoint
         self.__currentPoint.get_cars().append(self)
         self.__path = path
@@ -747,7 +775,7 @@ class CarObjectLogic(Mono):
     def Drive(self):
         if self.__canDrive:
             self.__lerpspeed = clamp(self.__lerpspeed + core.deltaTime * .8, 0, 1)
-        secspeed = self.__speed / 3.6
+        secspeed = (self.car.get_speed() * self.driver.baseRush) / 3.6
         self.__currentDistance += core.deltaTime * (secspeed * self.__lerpspeed)
         self.transform.position = Vector.Lerp(self.__startPos,
                                               self.__path[self.__path.index(self.__currentPoint)+1].transform.position,
@@ -800,6 +828,7 @@ class Bus(CarObjectLogic):
         self.__route = route
         self.__maxpassengers = maxpass
     def Start(self):
+        self.__passengers = random.randint(2, self.__maxpassengers//2)
         self.__reachedstops = []
         self._CarObjectLogic__startPos = self._CarObjectLogic__currentPoint.transform.position
     def Update(self):

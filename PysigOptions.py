@@ -107,8 +107,16 @@ class Render():
         print(end)
 
 class Core():
-    __dev = True
-    __version = 'beta 0.9.9a'
+    __dev = False
+    __version = '1.0'
+    __thread_render = True
+    @property
+    def thread_render(self) -> bool:
+        return self.__thread_render
+
+    @thread_render.setter
+    def thread_render(self, value: bool):
+        self.__thread_render = value
     @property
     def version(self):
         return self.__version

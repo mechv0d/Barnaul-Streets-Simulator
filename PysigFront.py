@@ -1,3 +1,4 @@
+import json
 from os import system, name
 from PysigOptions import core as c, render as rend, flags, flag_names as ff, args as cargs
 import random
@@ -110,21 +111,21 @@ def __parsecommand(comm:str, single=False) -> None:
             __map(args)
         case 'unfollow':
             __unfollow(args)
-        case 'flags':
+        case 'flags':  # dev
             __flags(args)
-        case 'corex':
+        case 'corex':  # dev
             __corex(args)
-        case 'render':
+        case 'render':  # dev
             __render(args)
         case 'echo':
             __echo(args)
-        case 'call':
+        case 'call':  # dev
             __call(args)
-        case 'cargs':
+        case 'cargs':  # dev
             __cargs(args)
-        case 'if':
+        case 'if':  # dev
             __if(args)
-        case 'dev':
+        case 'dev':  # dev
             c._Core__dev = False
             if len(args) > 0:
                 c._Core__dev = True if args[0] == '1983' else False
@@ -192,33 +193,22 @@ def __call(args): # DEV
     flags.switch(ff.comma_break)
     flags.switch(ff.comma_auto_revert_break)
 def __help(args):
-    show = 1 if len(args) == 1 and not args[0].isdigit() else 0  # if len(args) == 0
-    manual = {
-        'h':"HELP.\n"
-            "h -> список всех команд.\n"
-            "h @команда@ -> описание заданной команды.\n",
-        'clear':"CLEAR CONSOLE.\n"
-                "clear -> команда для очистки консоли.",
-        'carlist':"CAR LIST.\n"
-                  "carlist -> список всех машин, упорядоченных по уникальному идентификатору.\n"
-                  "carlist @тип_машины@ -> список машин определённого типа,"
-                  " упорядоченных по номеру маршрута по возрастанию, если это общ. транспорт,"
-                  " или по уникальному идентификатору.\n"
-                  "Типы машин: passenger, bus, trolleybus, tram.\n"
-    }
+    manual = ['help', 'carlist', 'robjlist', 'follow', 'unfollow', 'map']
+    if len(args) > 0 and args[0] not in manual:
+        print(f'Справочная информация к команде {args[0]} не найдена. Проверьте правильность написания и попробуйте ещё раз.')
+        return
+    show = 1 if len(args) > 0 else 0  # if len(args) == 0
+    targets = []
     if show == 1:
-        target = args[0]
-        found = False
-        for c in manual:
-            if c == target:
-                found = True
-                print('>>>', manual[c])
-                break
-        if not found:
-            print('Не удалось найти команду!')
+        targets.append(args[0])
     else:
-        for c in manual:
-                print('>>>', manual[c])
+        targets = manual
+    for command in targets:
+        with open(f'Manual/{command}.txt', 'r', encoding='utf-8') as file:
+            print('>>>', end='')
+            for row in file:
+                print('    ' + row, end='')
+            print('')
 def __carlist(args):
     if len(args) == 1:
         args[0] = args[0].capitalize()

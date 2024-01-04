@@ -1,7 +1,7 @@
 {
     "windowSize": [
-        720,
-        720
+        600,
+        600
     ],
     "framerate": 60,
     "vsync": 1,

@@ -7,6 +7,7 @@ import copy
 import PysigExtensions as ext
 import PysigMonoClasses as mono
 import PysigOptions as var
+from threading import Thread
 
 c = var.core
 c.mono = mono
@@ -129,7 +130,7 @@ class GameObject():
     __active = True
     __selfActive = __active
     __transform = None
-    __components = []
+    __components: list
     # region Properties
     @property
     def name(self):
@@ -188,14 +189,19 @@ class GameObject():
         self.transform = tr
         self.AddComponent(tr)
 
-    def AddComponent(self, component):
+    def AddComponent(self, component: mono.Mono):
         self.components.append(component)
         component.InitMono(self)
         return component
-    def AddComponents(self, components):
+    def AddComponents(self, components: list):
         for c in components:
             self.AddComponent(c)
         return components
+    def RemoveComponent(self, component: mono.Mono):
+        if self.transform.HasComponent(component):
+            comp = self.transform.GetComponent(component)
+            self.__components.remove(comp)
+            del comp
     def SetActive(self, active):
         self.active = active
         if active:
@@ -229,6 +235,10 @@ def rp(id: str, name: str, dist: int, objs: [], pos):
     point.AddComponent(mono.SpriteRenderer(ext.Sprite('Graphics/road.png'), ext.Vector.zero(), -1, [0, 0, 0, 177]))
     point.AddComponent(mono.RoadPoint(id, name, dist, objs))
     return point.transform.GetComponent(mono.RoadPoint)
+def tram_rp(id: str, name: str, dist: int, objs: [], pos):
+    comp = rp(id, name, dist, objs, pos)
+    comp.transform.GetComponent(mono.SpriteRenderer).image = ext.Sprite('Graphics/tram_road.png')
+    return comp
 def trl(name, inpos, index, show=True):
     light = GameObject("traffic light ", 'def')
     if show:
@@ -246,12 +256,21 @@ def bs(name, inpos, show=True):
     if show:
         bus.AddComponent(mono.SpriteRenderer(ext.Sprite('Graphics/stop.png'), ext.Vector.zero(), -5))
         bus.AddComponent(
-        mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10), "", ext.Vector(-20, -12)))
+        mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10), "", ext.Vector(-20, -12),
+                  ))
     bus.transform.SetScale(.66, .66)
     b = mono.BusStop(name, inpos)
     bus.AddComponent(b)
     bus.name += b.get_objid()
     return bus.transform.GetComponent(mono.BusStop)
+def trbs(name, inpos, show=True):
+    buss = bs(name, inpos, show)
+    buss.coeffDiv = 7
+    buss.passengers = random.randint(0, 4)
+    if buss.transform.HasComponent(mono.SpriteRenderer):
+        buss.transform.GetComponent(mono.SpriteRenderer).image = ext.Sprite('Graphics/tram_stop.png')
+        buss.transform.GetComponent(mono.Text).color = [255, 50, 0, 255]
+    return buss
 def carcolloftype(type, cars):
     for i in cars:
         i.set_cartype(type)
@@ -290,11 +309,13 @@ def bus(way, route: str, maxp, _car=None):
         if route in i:
             color = c.busColorDict[i]
             break
-    obj.AddComponent(mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10), '', ext.Vector(3, 6)))
-    obj.AddComponent(mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10),
-                               text=route,
-                               offset=ext.Vector(-3, -10),
-                               color=color))
+    obj.AddComponent(mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 10), '', ext.Vector(1, 13),))
+    obj.AddComponent(mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 12),
+                               text=route.upper().zfill(2),
+                               offset=ext.Vector(-0, -0),
+                               color='White',
+                               bcg=color
+                               ))
     bus = obj.AddComponent(mono.Bus(_car, mono.Car.Driver(), w0, way, w1, route, maxp))
     obj.name += ' ' + str(bus.get_uniqid())
     return obj
@@ -315,6 +336,22 @@ def addRandBus(rootNumber:str, dir='rand'):
         return
     obj = bus(c.buswayDict[rootNumber][dir], rootNumber, 70)
     scene.AddLateObject(obj)
+def addRandTram(rootNumber:str, dir='rand'):
+    if dir == 'rand':
+        dir = random.randint(0, 1)
+    exist = rootNumber in list(c.buswayDict.keys())
+    if not exist:
+        return
+    _car = random.choice(c.cars[mono.CarTypes.Tram])
+    _car = copy.deepcopy(_car)
+    _car.driver = mono.Car.Driver()
+    obj = bus(c.buswayDict[rootNumber][dir], rootNumber, 70)
+    buss = obj.transform.GetComponent(mono.Bus)
+    buss.car = _car
+    buss.driver = _car.driver
+    obj.RemoveComponent(mono.Car)
+    obj.AddComponent(_car)
+    scene.AddLateObject(obj)
 def addRandCar(dir='rand'):
     if dir == 'rand':
         dir = random.randint(0, 1)
@@ -327,7 +364,7 @@ def addRandCar(dir='rand'):
 pygame.init()
 rend.LoadPreferences()
 clock = pygame.time.Clock()
-c.scene = Scene('def', 0, [])
+c.scene = Scene('core', 0, [])
 scene = c.scene
 var.render.defaults = [mono.Text, mono.SpriteRenderer]
 c.iinput = Input()
@@ -365,12 +402,28 @@ pygame.display.set_caption("Barnaul Streets Simulator")
 pygame.display.set_icon(ext.Sprite('Graphics/stop.png').load)
 # endregion
 # region Camera Initialize
-camera = GameObject("Camera", "def")
+camera = GameObject("Camera", "cam")
 c.mainCamera = camera.AddComponent(mono.Camera(rend.windowSize, rend.framerate, rend.vsync))
 camera.AddComponent(mono.PlayerController())
 cam = camera.transform.GetComponent(mono.Camera)
 camera.transform.position -= ext.Vector(-30, -30) # откуда этот offset я без понятия
+camera.transform.SetPos(3630, -280)
 scene.AddObject(camera)
+downpanelObj = GameObject('panel', 'ui')
+scene.AddObject(downpanelObj)
+camera.transform.AddChild(downpanelObj)
+downpanelObj.transform.SetPos(0, 0)
+downpaneltxt = mono.Text(ext.Font('Graphics/Fonts/Roboto-Medium.ttf', 14),
+                               text='Barnaul Streets Simulator. Сергей Рем, 1ИСП-21 АлтГТУ 2024 г.\n'
+                                    'tg @mechv0d.\n'
+                                    'WASD - Перемещение, q - Консоль, Esc - Выход.',
+                               offset=ext.Vector(0, 0),
+                               bcg='Black',
+                               layer=10000
+                                )
+downpanelObj.AddComponent(downpaneltxt)
+downpanelObj.transform.SetPixelSize(rend.windowSize[0], 30)
+
 # endregion
 # region Light Controllers
 c.lightsControllers.append(lc(13.0, 60.0, False))  # 0
@@ -462,43 +515,87 @@ aapr0 = rpcollection([
         [trl('trl', 1, 1), bs('Трактовая', 523)],
         ext.Vector(1435, -398)),
 ])[0]
+
+tram0 = rpcollection([
+tram_rp('09000', 'right', 600, [trbs('Телефонная улица', 56),  trbs('Улица Северозападная', 550)], ext.Vector(6384.17, 1225.95)),
+tram_rp('09001', 'asz', 900, [trbs('Улица 42-й Краснознамённой Бригады', 881),
+                                trbs('Улица Северозападная', 52),
+                                trbs('Трамвайный проезд', 424+10)
+                              ], ext.Vector(5613.05, 858.72)),
+tram_rp('09002', 'a42kb', 563, [trbs('Улица Малахова', 431)], ext.Vector(4465.24, 329.99)),
+tram_rp('09003', 'left', 563, [], ext.Vector(3760.99, 2.21))
+], True)[0]
+tram1 = rpcollection([
+tram_rp('19000', 'left', 563, [trbs('Улица Малахова', 108),
+                                trbs('Улица 42-й Краснознамённой Бригады', 536)
+                               ], ext.Vector(3760.99, 2.21)),
+tram_rp('19001', 'a42kb', 900, [trbs('Трамвайный проезд', 491+10),
+                                trbs('Улица Северозападная', 855, False)
+                                ], ext.Vector(4465.24, 329.99)),
+tram_rp('19002', 'asz', 600, [trbs('Улица Северозападная', 52, False),
+                                trbs('Телефонная улица', 548, False)
+                              ], ext.Vector(5613.05, 858.72)),
+tram_rp('19003', 'right', 600, [], ext.Vector(6384.17, 1225.95)),
+], True)[0]
 # endregion
 # region Ways Initialize
 way0 = at0 + asz0 + amr0 + mr0 + aapr0
 way1 = amr1 + asz1 + at1
 busway0 = way0[1:]
-busway1 = way1[:len(way1)-1]
-c.buswayDict = {'53':[busway0, busway1],
-                '144':[busway0, busway1]}
+busway1 = way1[:-1]
+bus10way0 = asz0[1:] + amr0 + mr0
+bus10way1 = amr1 + asz1 + at1[:-2]
+bus60way0 = asz0[1:] + amr0 + mr0 + aapr0
+bus60way1 = way1[:]
+mb6way0 = way0[1:-1]
+mb6way1 = way1[:-1]
+c.buswayDict = {
+    '53': [busway0, busway1],
+    '6': [mb6way0, mb6way1],
+    '10': [bus10way0, bus10way1],
+    '60': [bus60way0, bus60way1],
+    'т1': [tram0[1:], tram1[:-1]],
+    'т3': [tram0, tram1],
+    'т5': [tram0, tram1],
+    'т7': [tram0[1:], tram1[:-1]],
+    'т10': [tram0[1:], tram1[:-1]],
+    }
 c.fullway.append(way0)
 c.fullway.append(way1)
 # endregion
 # region Bus Dicts Initialize
-c.busIconDict = {('53'): 'Graphics/longbus.png',
-                 ('144'): 'Graphics/minibus.png'}
-c.busColorDict = {('53'): 'Green',
-                  ('144'): 'Pink'}
+c.busIconDict = {('53', '10', '60'): 'Graphics/longbus.png',
+                 ('6'): 'Graphics/minibus.png',
+                 ('т1', 'т3', 'т5', 'т7', 'т10'): 'Graphics/tram.png'
+                 }
+c.busColorDict = {('53', '10', '60'): [0, 140, 0, 255],
+                  ('6'): [102, 0, 102, 255],
+                  ('т1', 'т3', 'т5', 'т7', 'т10'): 'Red'}
 # endregion
-camera.transform.SetPos(3127, -411)  # debug position
 #rend.SavePreferences()
 # region Tick Initialize
 tickCar = mono.Tick.CreateObject('passenger', 2, [(addRandCar, [])]*2)
 tickCarDoubleRandom = mono.Tick.CreateObject('passenger', 2, [(addRandCar, [])]*4)
 tickCarDoubleRandom.transform.GetComponent(mono.Tick).SetAsRandom(1, 6)
 tick53 = mono.Tick.CreateObject('53 автобус', 60, [(addRandBus, ["53"])])
-tick144 = mono.Tick.CreateObject('144 автобус', 60, [(addRandBus, ["144"])])
-ticklist = [tick53, tick144, tickCar, tickCarDoubleRandom] #, tickCar, tickCarDoubleRandom
+tick10 = mono.Tick.CreateObject('10 автобус', 60, [(addRandBus, ["10"])])
+tick60 = mono.Tick.CreateObject('60 автобус', 60, [(addRandBus, ["60"])])
+tick6 = mono.Tick.CreateObject('6 маршрутка', 60, [(addRandBus, ["6"])])
+tramtick1 = mono.Tick.CreateObject('1 трамвай', 90, [(addRandTram, ["т1", 1])])
+tramtick3 = mono.Tick.CreateObject('3 трамвай', 90, [(addRandTram, ["т3", 0])])
+tramtick5 = mono.Tick.CreateObject('5 трамвай', 45, [(addRandTram, ["т5", 1])])
+tramtick7 = mono.Tick.CreateObject('7 трамвай', 45, [(addRandTram, ["т7", 0])])
+tramtick10 = mono.Tick.CreateObject('10 трамвай', 90+45, [(addRandTram, ["т10", 1])])
+ticklist = [tick53, tick6, tickCar, tickCarDoubleRandom, tick10, tick60] #, tickCar, tickCarDoubleRandom
+for tt in [tramtick1, tramtick3]:
+    tt.transform.GetComponent(mono.Tick).EventsCall()
 for tick in ticklist:
     tick.transform.GetComponent(mono.Tick).EventsCall()
 scene.AddObjects(ticklist)
+scene.AddObjects([tramtick1, tramtick3, tramtick5, tramtick7, tramtick10])
 # endregion
-# region Debug Buses
-#testway = mr0 + aapr0
+# region Debug
 
-#buses144 = [bus(way1, '144', 30) for i in range(0, 3)]
-
-#scene.AddObjects(buses53)
-#scene.AddObjects(buses144)
 # endregion
 # region Console Startup
 front.__parsecommand('call startup.txt', True)
@@ -510,6 +607,15 @@ for gm in scene.GetActive(True):
             comp.Start()
 # endregion
 # region Runtime
+def update_rend(obj_list):
+    for rr in rend.defaults.__reversed__():
+        rendList = []
+        for gm in obj_list:
+            for comp in gm.components:
+                if isinstance(comp, rr) and comp.enabled: rendList.append(comp)
+        rendList.sort(key=lambda r: r.layer, reverse=False)
+        for _rend in rendList:
+            _rend.Update()
 scene.objects = list(set(scene.objects))
 runtimeActive = True
 while runtimeActive:
@@ -522,8 +628,9 @@ while runtimeActive:
     # endregion
     # region Custom Keys
     if c.iinput.keys[pygame.K_e]:
-        print(c.iinput.cursorWorldPosition)
+        #print(c.iinput.cursorWorldPosition)
         debugstop = True
+        #print(int(1/c.deltaTime))
     if c.iinput.keys[pygame.K_q]:
         front.StartConsoleDialogue()
         var.core.deltaTime = clock.tick(var.core.mainCamera.targetFramerate) / 1000
@@ -548,14 +655,31 @@ while runtimeActive:
                 comp.Update()
     # endregion
     # region Render Update()
-    for rr in var.render.defaults.__reversed__():
+    if c.thread_render:
+        __objs = [i for i in scene.GetActive(True) if i not in c.maps]
+        __maps = c.maps
+        __rts = []
+        for map in __maps:
+            __rt = Thread(target=update_rend, args=([map],))
+            __rts.append(__rt)
+            __rt.start()
+        for rt in __rts:
+            rt.join()
+        update_rend(__objs)
+    else:
+        update_rend(scene.GetActive(True))
+    #__rt = Thread(target=update_rend, args=(__maps,))
+    #__rt.start()
+    #update_rend(__objs)
+    #__rt.join()
+    '''for rr in var.render.defaults.__reversed__():
         rendList = []
         for gm in scene.GetActive(True):
             for comp in gm.components:
                 if (type(comp) == rr)  and comp.enabled: rendList.append(comp)
         rendList.sort(key=lambda r: r.layer, reverse=False)
         for _rend in rendList:
-            _rend.Update()
+            _rend.Update()'''
     # endregion
     for i in c.lightsControllers: i.Update()
     # region Quit Event
