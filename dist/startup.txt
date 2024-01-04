@@ -1,5 +1,0 @@
-echo Barnaul Streets Simulator
-echo Автор: Сергей Рем, 1ИСП-21 АлтГТУ
-echo tg @r@mechv0d
-echo Версия: $version
-echo q - Открыть консоль, Esc - Выход
